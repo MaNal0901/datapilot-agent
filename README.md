@@ -23,3 +23,32 @@ graph TD
 ```
 
 Les flèches en pointillés sont des arêtes conditionnelles : le routeur choisit la suite selon l'état.
+
+## Installation
+
+```powershell
+git clone https://github.com/MaNal0901/datapilot-agent.git
+cd datapilot-agent
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install -e .
+Copy-Item .env.example .env   # puis renseigner GEMINI_API_KEY
+```
+
+## Données
+
+Télécharger le jeu « Brazilian E-Commerce Public Dataset by Olist » sur Kaggle,
+extraire les CSV dans `data/raw/`, puis :
+
+```powershell
+python scripts\load_db.py
+```
+
+## Utilisation
+
+```powershell
+python scripts\ask_graph.py "Quels sont les 5 états avec le plus de commandes ?"   # version LangGraph
+python scripts\ask.py "..."                                                         # version boucle libre
+pytest
+```
