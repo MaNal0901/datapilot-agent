@@ -1,9 +1,16 @@
 from langgraph.graph import END, START, StateGraph
 
-from datapilot.agent.nodes import execute_sql, generate_sql, give_up, load_schema, write_answer
+from datapilot.agent.nodes import (
+    decline, execute_sql, generate_sql, give_up, load_schema, write_answer,
+)
 from datapilot.agent.state import AgentState
 
 MAX_ATTEMPTS = 3   # garde-fou : nombre max de tentatives de génération SQL
+
+
+def route_after_generate(state: AgentState) -> str:
+    """Après la génération : on exécute le SQL, ou on refuse explicitement."""
+    return "decline" if state.get("declined") else "execute"
 
 
 def route_after_execute(state: AgentState) -> str:
@@ -22,6 +29,7 @@ def build_graph(with_answer: bool = True):
 
     g.add_node("load_schema", load_schema)
     g.add_node("generate_sql", generate_sql)
+    g.add_node("decline", decline)
     g.add_node("execute_sql", execute_sql)
     g.add_node("give_up", give_up)
     if with_answer:
@@ -29,7 +37,12 @@ def build_graph(with_answer: bool = True):
 
     g.add_edge(START, "load_schema")
     g.add_edge("load_schema", "generate_sql")
-    g.add_edge("generate_sql", "execute_sql")
+    g.add_conditional_edges(
+        "generate_sql",
+        route_after_generate,
+        {"execute": "execute_sql", "decline": "decline"},
+    )
+    g.add_edge("decline", END)
     g.add_conditional_edges(
         "execute_sql",
         route_after_execute,
@@ -58,6 +71,8 @@ def run_graph(question: str, verbose: bool = False, with_answer: bool = True) ->
                 print(f"[nœud : {node}]")
                 if "sql" in update:
                     print("   SQL :", update["sql"])
+                if update.get("declined"):
+                    print("   refus :", update["decline_reason"])
                 if "result" in update:
                     print("   ->", str(update["result"])[:200])
                 if update.get("error"):

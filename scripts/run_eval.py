@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import time
 from collections import Counter, defaultdict
@@ -29,12 +30,17 @@ def main():
     with_answer = "--with-answer" in args          # par défaut : on n'évalue que le SQL
     numbers = [a for a in args if a.isdigit()]
     limit = int(numbers[0]) if numbers else None
+    tag = next((a.split("=", 1)[1] for a in args if a.startswith("--tag=")), "graph")
+    pause = float(os.environ.get("EVAL_PAUSE", "0"))   # secondes entre deux questions
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = RESULTS_DIR / f"graph_{datetime.now():%Y%m%d_%H%M}.json"
+    out = RESULTS_DIR / f"{tag}_{datetime.now():%Y%m%d_%H%M}.json"
     rows = []
 
-    for q in load_questions(limit):
+    for i, q in enumerate(load_questions(limit)):
+        if i and pause:
+            time.sleep(pause)
+
         gold = run_sql(q["gold_sql"])
         if "error" in gold:
             sys.exit(f"{q['id']} : la requête de référence est invalide : {gold['error']}")
@@ -44,7 +50,7 @@ def main():
         try:
             final = run_graph(q["question"], with_answer=with_answer)
             crash = None
-        except Exception as e:           # ex. LLM indisponible : on note et on continue
+        except Exception as e:           # ex. quota épuisé : on note et on continue
             final, crash = {}, str(e)
         latency = round(time.time() - start, 1)
 
@@ -59,24 +65,29 @@ def main():
         })
         save(rows, out)                  # sauvegarde après CHAQUE question
 
-        print(f"{'OK   ' if ok else 'ECHEC'} {q['id']} [{q['level']}] "
-              f"tentatives={attempts} {latency}s {models}")
-        if not ok:
+        status = "PLANTE" if crash else ("OK   " if ok else "ECHEC")
+        print(f"{status} {q['id']} [{q['level']}] tentatives={attempts} {latency}s {models}")
+        if crash:
+            print("      plantage :", crash[:120])
+        elif not ok:
             print("      SQL produit :", final.get("sql"))
-            if crash:
-                print("      plantage :", crash[:150])
 
-    total = len(rows)
-    print(f"\nExactitude d'exécution : {sum(r['ok'] for r in rows)}/{total}")
-    by_level = defaultdict(list)
-    for r in rows:
-        by_level[r["level"]].append(r["ok"])
-    for level, oks in by_level.items():
-        print(f"  {level:10s} {sum(oks)}/{len(oks)}")
+    valid = [r for r in rows if not r["crash"]]
+    crashed = [r for r in rows if r["crash"]]
+    print(f"\nQuestions évaluées : {len(valid)}/{len(rows)} (plantages exclus du score : {len(crashed)})")
+    if valid:
+        print(f"Exactitude d'exécution : {sum(r['ok'] for r in valid)}/{len(valid)}")
+        by_level = defaultdict(list)
+        for r in valid:
+            by_level[r["level"]].append(r["ok"])
+        for level, oks in by_level.items():
+            print(f"  {level:10s} {sum(oks)}/{len(oks)}")
+        print(f"Tentatives moyennes : {sum(r['attempts'] for r in valid) / len(valid):.2f}")
+        print(f"Latence moyenne : {sum(r['latency_s'] for r in valid) / len(valid):.1f}s")
     usage = Counter(m for r in rows for m in r["models"])
     print("Modèles ayant répondu :", dict(usage))
-    print(f"Tentatives moyennes : {sum(r['attempts'] for r in rows) / total:.2f}")
-    print(f"Latence moyenne : {sum(r['latency_s'] for r in rows) / total:.1f}s")
+    if crashed:
+        print("ATTENTION : des questions ont planté (quota, délai...) : ce run n'est pas comparable à un run complet.")
     print("Résultats enregistrés :", out)
 
 
