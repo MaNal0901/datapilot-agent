@@ -72,7 +72,8 @@ def run_graph(question: str, verbose: bool = False, with_answer: bool = True) ->
                 if "sql" in update:
                     print("   SQL :", update["sql"])
                 if update.get("declined"):
-                    print("   refus :", update["decline_reason"])
+                    label = "clarification" if update.get("clarification") else "refus"
+                    print(f"   {label} :", update["decline_reason"])
                 if "result" in update:
                     print("   ->", str(update["result"])[:200])
                 if update.get("error"):

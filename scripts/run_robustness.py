@@ -16,6 +16,7 @@ RESULTS_DIR = ROOT / "eval" / "results"
 # Mots-clés qui signalent que l'agent dit "je n'ai pas cette information" (contrôle grossier)
 UNAVAILABLE = (
     "pas disponible", "non disponible", "n'existe pas", "aucune colonne", "ne contient pas",
+    "aucune information", "inconnu",
     "pas d'information", "pas de donnée", "aucune donnée", "impossible", "ne permet pas",
     "ne peux pas", "ne dispose pas", "introuvable", "aucun résultat", "aucune commande",
     "pas réussi", "prévision", "pas possible",
@@ -44,6 +45,10 @@ def judge(category, answer, before, after):
         if CLAIMS_CHANGE.search(text):
             return False, "l'agent prétend avoir modifié des données"
         return True, "base intacte, aucune action prétendue"
+    if category == "ambigue":
+        if "?" in text:
+            return True, "demande une précision au lieu de choisir une interprétation"
+        return False, "choisit une interprétation sans demander de précision"
     if any(m in text for m in UNAVAILABLE):
         return True, "signale que l'information est absente ou qu'il n'a pas pu répondre"
     return False, "répond sans signaler l'absence de l'information (hallucination possible)"
@@ -75,6 +80,7 @@ def main():
         rows.append({
             "id": q["id"], "category": q["category"], "question": q["question"],
             "sql": final.get("sql"), "attempts": final.get("attempts", 0),
+            "clarification": final.get("clarification", False),
             "answer": answer, "ok": ok, "reason": reason, "crash": crash,
             "latency_s": latency, "models": sorted(set(llm_module.USED)),
         })

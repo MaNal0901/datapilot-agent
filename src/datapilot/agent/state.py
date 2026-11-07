@@ -12,3 +12,4 @@ class AgentState(TypedDict, total=False):
     answer: str          # réponse finale
     declined: bool       # l'agent a refusé de produire du SQL
     decline_reason: str  # explication du refus, adressée à l'utilisateur
+    clarification: bool  # une précision de l'utilisateur est nécessaire

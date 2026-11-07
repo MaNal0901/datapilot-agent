@@ -1,0 +1,42 @@
+[
+  {
+    "id": "q01",
+    "level": "facile",
+    "question": "Combien de commandes y a-t-il au total ?",
+    "gold_sql": "SELECT COUNT(*) FROM orders",
+    "pred_sql": "SELECT COUNT(*) FROM orders",
+    "ok": true,
+    "attempts": 1,
+    "latency_s": 2.4,
+    "models": [
+      "gemini-3.5-flash"
+    ],
+    "crash": null
+  },
+  {
+    "id": "q02",
+    "level": "facile",
+    "question": "Combien de commandes ont le statut canceled ?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE order_status = 'canceled'",
+    "pred_sql": "SELECT COUNT(*) FROM orders WHERE order_status = 'canceled'",
+    "ok": true,
+    "attempts": 1,
+    "latency_s": 3.9,
+    "models": [
+      "gemini-3.5-flash"
+    ],
+    "crash": null
+  },
+  {
+    "id": "q03",
+    "level": "facile",
+    "question": "Combien de vendeurs y a-t-il dans la base ?",
+    "gold_sql": "SELECT COUNT(DISTINCT seller_id) FROM sellers",
+    "pred_sql": null,
+    "ok": false,
+    "attempts": 0,
+    "latency_s": 119.9,
+    "models": [],
+    "crash": "504 DEADLINE_EXCEEDED. {'error': {'code': 504, 'message': 'Deadline expired before operation could complete.', 'status': 'DEADLINE_EXCEEDED'}}"
+  }
+]

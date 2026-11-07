@@ -1,5 +1,5 @@
 from datapilot.agent.graph import route_after_generate
-from datapilot.agent.nodes import generate_sql
+from datapilot.agent.nodes import CLARIFY_PREFIX, generate_sql
 
 
 def test_route_decline():
@@ -19,6 +19,17 @@ def test_generate_sql_declines(monkeypatch):
     out = generate_sql({"question": "âge moyen ?", "schema": "x", "attempts": 0})
     assert out["declined"] is True
     assert "âge" in out["decline_reason"]
+
+
+def test_generate_sql_requests_clarification(monkeypatch):
+    monkeypatch.setattr(
+        "datapilot.agent.nodes.llm",
+        lambda prompt: f"{CLARIFY_PREFIX} Parlez-vous du salaire ou des achats ?",
+    )
+    out = generate_sql({"question": "revenu moyen ?", "schema": "x", "attempts": 0})
+    assert out["declined"] is True
+    assert out["clarification"] is True
+    assert "salaire" in out["decline_reason"]
 
 
 def test_generate_sql_returns_clean_sql(monkeypatch):

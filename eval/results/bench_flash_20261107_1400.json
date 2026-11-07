@@ -1,0 +1,28 @@
+[
+  {
+    "id": "q01",
+    "level": "facile",
+    "question": "Combien de commandes y a-t-il au total ?",
+    "gold_sql": "SELECT COUNT(*) FROM orders",
+    "pred_sql": "SELECT COUNT(*) FROM orders",
+    "ok": true,
+    "attempts": 1,
+    "latency_s": 3.0,
+    "models": [
+      "gemini-3.5-flash"
+    ],
+    "crash": null
+  },
+  {
+    "id": "q02",
+    "level": "facile",
+    "question": "Combien de commandes ont le statut canceled ?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE order_status = 'canceled'",
+    "pred_sql": null,
+    "ok": false,
+    "attempts": 0,
+    "latency_s": 79.3,
+    "models": [],
+    "crash": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+  }
+]
