@@ -17,14 +17,15 @@ def route_after_execute(state: AgentState) -> str:
     return "answer"
 
 
-def build_graph():
+def build_graph(with_answer: bool = True):
     g = StateGraph(AgentState)
 
     g.add_node("load_schema", load_schema)
     g.add_node("generate_sql", generate_sql)
     g.add_node("execute_sql", execute_sql)
-    g.add_node("write_answer", write_answer)
     g.add_node("give_up", give_up)
+    if with_answer:
+        g.add_node("write_answer", write_answer)
 
     g.add_edge(START, "load_schema")
     g.add_edge("load_schema", "generate_sql")
@@ -32,16 +33,22 @@ def build_graph():
     g.add_conditional_edges(
         "execute_sql",
         route_after_execute,
-        {"retry": "generate_sql", "answer": "write_answer", "give_up": "give_up"},
+        {
+            "retry": "generate_sql",
+            "answer": "write_answer" if with_answer else END,
+            "give_up": "give_up",
+        },
     )
-    g.add_edge("write_answer", END)
+    if with_answer:
+        g.add_edge("write_answer", END)
     g.add_edge("give_up", END)
 
     return g.compile()
 
 
-def ask_graph(question: str, verbose: bool = True) -> str:
-    app = build_graph()
+def run_graph(question: str, verbose: bool = False, with_answer: bool = True) -> dict:
+    """Exécute le graphe et renvoie l'état final complet (SQL, résultat, tentatives, réponse)."""
+    app = build_graph(with_answer)
     final = {"question": question, "attempts": 0}
     # stream_mode="updates" : on reçoit la mise à jour de chaque nœud, au fur et à mesure
     for event in app.stream(dict(final), stream_mode="updates"):
@@ -55,4 +62,8 @@ def ask_graph(question: str, verbose: bool = True) -> str:
                     print("   ->", str(update["result"])[:200])
                 if update.get("error"):
                     print("   erreur :", update["error"])
-    return final.get("answer", "")
+    return final
+
+
+def ask_graph(question: str, verbose: bool = True) -> str:
+    return run_graph(question, verbose).get("answer", "")
